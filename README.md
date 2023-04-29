@@ -1,7 +1,7 @@
 # Mechanics-Project
 The project aims at design and simulation of a mechanical converter that converts binary representation of a number into its value in the decimal numeral system. 
 BOOKS - "Introduction to Mechanics" by D. Kleppner and R. Kolenkow, specifically Chapter 3 on Hook's Law and Simple Harmonic Motion. This will provide a good foundation for understanding the physics behind the spring oscillator.
-"An Introduction to Computer Simulation Methods: Applications to Physical System" by H. Gould, J. Tobochnik, and W. Christian, specifically Chapter 9 on Normal Modes and Waves. potential task 1(not finished)
+"An Introduction to Computer Simulation Methods: Applications to Physical System" by H. Gould, J. Tobochnik, and W. Christian, specifically Chapter 9 on Normal Modes and Waves. potential task 1
 
 
 
