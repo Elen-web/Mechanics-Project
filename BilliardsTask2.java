@@ -2,121 +2,112 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class VerticalCircularBilliardSimulation {
-    public static void main(String[] args) {
-        int numReflections = 10;  // Number of reflections to simulate
-        double deviationThreshold = 0.01;  // Deviation threshold to check for
+public class VerticalCircularBilliard {
+    private static final double GRAVITY = 10.0;
+    private static final double RADIUS = 1.0;
 
-        // Simulate billiard and save reflection points
-        List<double[]> reflectionPoints = simulateBilliard(numReflections);
+    public static void main(String[] args) {
+        int numReflections = 100;  // Number of reflections to simulate
+        double x0 = getRandomNumber(-1, 1);  // Initial x-coordinate (-1 to 1)
+        double y0 = getRandomNumber(-1, 1);  // Initial y-coordinate (-1 to 1)
+        double magnitude = getRandomNumber(5, 10);  // Magnitude of the initial momentum
+
+        // Normalize the initial momentum vector
+        double px0 = getRandomNumber(-1, 1) / magnitude;
+        double py0 = getRandomNumber(-1, 1) / magnitude;
+
+        // Simulate vertical circular billiard
+        List<double[]> reflectionPoints = simulateVerticalBilliard(numReflections, x0, y0, px0, py0);
 
         // Test reversibility
-        boolean isReversible = testReversibility(reflectionPoints, numReflections, deviationThreshold);
+        double delta = 0.001;  // Small delta for deviation threshold
+        int deviationPoint = testReversibility(reflectionPoints, numReflections, delta);
 
-        // Print the result
-        if (isReversible) {
-            System.out.println("The motion is reversible.");
+        // Print results
+        System.out.println("Number of reflections: " + numReflections);
+        System.out.println("Initial position: (" + x0 + ", " + y0 + ")");
+        System.out.println("Initial momentum: (" + px0 + ", " + py0 + ")");
+        System.out.println("Reflection points: " + reflectionPoints);
+        System.out.println("Reversibility test:");
+        if (deviationPoint == -1) {
+            System.out.println("The reversed path coincides with the straight one.");
         } else {
-            System.out.println("The motion is not reversible after " + numReflections + " reflections.");
+            System.out.println("The paths deviate after " + deviationPoint + " reflections.");
         }
     }
 
-    public static List<double[]> simulateBilliard(int numReflections) {
-        // Set up initial conditions
-        Random random = new Random();
-        double x = random.nextDouble() * 2 - 1;  // Initial x-coordinate (-1 to 1)
-        double y = random.nextDouble() * 2 - 1;  // Initial y-coordinate (-1 to 1)
-        double px = random.nextDouble() * 5 + 5;  // Initial x-component of momentum (5 to 10)
-        double py = random.nextDouble() * 5 + 5;  // Initial y-component of momentum (5 to 10)
-
-        // Normalize the momentum vector
-        double magnitude = Math.sqrt(px * px + py * py);
-        px /= magnitude;
-        py /= magnitude;
-
-        // List to store reflection points
+    private static List<double[]> simulateVerticalBilliard(int numReflections, double x0, double y0, double px0, double py0) {
         List<double[]> reflectionPoints = new ArrayList<>();
 
-        // Simulate reflections
+        double x = x0;
+        double y = y0;
+        double px = px0;
+        double py = py0;
+
         for (int i = 0; i < numReflections; i++) {
-            // Calculate the next position
-            double nextX = x + px;
-            double nextY = y + py;
+            // Calculate time to next reflection
+            double a = px * px + (py - GRAVITY) * (py - GRAVITY);
+            double b = 2 * (x * px + (y - RADIUS) * (py - GRAVITY));
+            double c = x * x + (y - RADIUS) * (y - RADIUS) - RADIUS * RADIUS;
 
-            // Check for collision with the circle boundary
-            if (nextX * nextX + nextY * nextY >= 1) {
-                // Reflect the position
-                nextX = x;
-                nextY = y;
+            double discriminant = b * b - 4 * a * c;
 
-                // Calculate the new momentum
-                double pX = (nextY * nextY - nextX * nextX) * px - 2 * nextX * nextY * py;
-                double pY = -2 * nextX * nextY * px + (nextX * nextX - nextY * nextY) * py;
-
-                px = pX;
-                py = pY;
+            if (discriminant < 0) {
+                break;
             }
 
+            double t = (-b + Math.sqrt(discriminant)) / (2 * a);
+
+            // Calculate new position and reflection point
+            double nextX = x + px * t;
+            double nextY = y + (py - GRAVITY) * t - 0.5 * GRAVITY * t * t;
+
+            double reflectionX = nextX;
+            double reflectionY = 2 * RADIUS - nextY;
+
+            // Update momentum
+            double newPx = (reflectionY * reflectionY - reflectionX * reflectionX) * px - 2 * reflectionX * reflectionY * py;
+            double newPy = -2 * reflectionX * reflectionY * px + (reflectionX * reflectionX - reflectionY * reflectionY) * py;
+
+            // Store reflection point
+            reflectionPoints.add(new double[]{reflectionX, reflectionY});
+
+            // Update position and momentum
             x = nextX;
             y = nextY;
-
-            // Save the reflection point
-            reflectionPoints.add(new double[]{x, y});
+            px = newPx;
+            py = newPy;
         }
 
         return reflectionPoints;
     }
 
-    public static boolean testReversibility(List<double[]> reflectionPoints, int numReflections, double deviationThreshold) {
-        // Reverse the momentum after n reflections
-        List<double[]> reversedPath = simulateReversedBilliard(reflectionPoints, numReflections);
-
-        // Check for deviation between the forward and reversed paths
+    private static int testReversibility(List<double[]> reflectionPoints, int numReflections, double delta) {
+        // Reverse the momentum
         for (int i = 0; i < numReflections; i++) {
-            double deltaX = Math.abs(reflectionPoints.get(i)[0] - reversedPath.get(i)[0]);
-            double deltaY = Math.abs(reflectionPoints.get(i)[1] - reversedPath.get(i)[1]);
+            double[] point = reflectionPoints.get(i);
+            point[1] = -point[1];
+        }
 
-            if (deltaX > deviationThreshold || deltaY > deviationThreshold) {
-                return false;
+        // Simulate reversed billiard
+        List<double[]> reversedPoints = simulateVerticalBilliard(numReflections, reflectionPoints.get(numReflections - 1)[0], reflectionPoints.get(numReflections - 1)[1],
+                reflectionPoints.get(numReflections - 1)[0], -reflectionPoints.get(numReflections - 1)[1]);
+
+        // Check for deviation
+        for (int i = 0; i < numReflections; i++) {
+            double[] originalPoint = reflectionPoints.get(i);
+            double[] reversedPoint = reversedPoints.get(i);
+
+            if (Math.abs(originalPoint[0] - reversedPoint[0]) > delta || Math.abs(originalPoint[1] - reversedPoint[1]) > delta) {
+                return i + 1;  // Deviation point
             }
         }
 
-        return true;
+        return -1;  // No deviation
     }
 
-    public static List<double[]> simulateReversedBilliard(List<double[]> reflectionPoints, int numReflections) {
-        // Get the last reflection point as the initial position
-        double x = reflectionPoints.get(numReflections - 1)[0];
-        double y = reflectionPoints.get(numReflections - 1)[1];
-
-        // Reverse the momentum
-        double px = -reflectionPoints.get(numReflections - 1)[0];
-        double py = -reflectionPoints.get(numReflections - 1)[1];
-
-        // List to store reversed reflection points
-        List<double[]> reversedPath = new ArrayList<>();
-
-        // Simulate reversed reflections
-        for (int i = numReflections - 1; i >= 0; i--) {
-            // Calculate the previous position
-            double prevX = x - px;
-            double prevY = y - py;
-
-            // Reflect the position
-            x = prevX;
-            y = prevY;
-
-            // Calculate the new momentum
-            double pX = (y * y - x * x) * px - 2 * x * y * py;
-            double pY = -2 * x * y * px + (x * x - y * y) * py;
-
-            px = pX;
-            py = pY;
-
-            // Add the reversed reflection point
-            reversedPath.add(0, new double[]{x, y});
-        }
-
-        return reversedPath;
+    private static double getRandomNumber(double min, double max) {
+        Random random = new Random();
+        return min + (max - min) * random.nextDouble();
     }
 }
